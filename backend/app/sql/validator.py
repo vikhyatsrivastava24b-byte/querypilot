@@ -13,9 +13,20 @@ FORBIDDEN_KEYWORDS = {
     "REVOKE",
 }
 
+ALLOWED_TABLES = {
+    "categories",
+    "products",
+    "customers",
+    "orders",
+    "order_items",
+}
+
 
 def validate_sql(sql: str) -> str:
     sql = sql.strip()
+
+    if "--" in sql or "/*" in sql or "*/" in sql:
+        raise ValueError("SQL comments are not allowed")
 
     if not sql:
         raise ValueError("SQL query is empty")
@@ -35,5 +46,15 @@ def validate_sql(sql: str) -> str:
     for keyword in FORBIDDEN_KEYWORDS:
         if re.search(rf"\b{keyword}\b", normalized_sql, re.IGNORECASE):
             raise ValueError(f"Forbidden SQL keyword: {keyword}")
+
+    tables = re.findall(
+        r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+        normalized_sql,
+        re.IGNORECASE,
+    )
+
+    for table in tables:
+        if table.lower() not in ALLOWED_TABLES:
+            raise ValueError(f"Table not allowed: {table}")    
 
     return sql
