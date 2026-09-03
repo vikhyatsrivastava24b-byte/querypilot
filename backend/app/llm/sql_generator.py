@@ -59,6 +59,9 @@ Rules:
 4. Do not use markdown code fences.
 5. Do not include explanations.
 6. Use only tables and columns from the schema above.
+7. Never invent, rename, or substitute column names.
+8. If the user asks for a column that does not exist in the schema, do not replace it with NULL, a different column, or an alias.
+9. Only reference columns that actually exist in the schema.
 """
 
 
@@ -77,5 +80,9 @@ def generate_sql(question: str) -> str:
         ],
         temperature=0,
     )
+    sql = response.choices[0].message.content.strip()
 
-    return response.choices[0].message.content.strip()
+    if not sql:
+        raise ValueError("Unable to generate SQL for this question")
+
+    return sql
