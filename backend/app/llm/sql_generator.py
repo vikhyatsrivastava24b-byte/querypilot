@@ -65,7 +65,7 @@ Rules:
 """
 
 
-def generate_sql(question: str) -> str:
+def generate_sql(question: str, schema_context: str = "") -> str:
     response = client.chat.completions.create(
      model="openai/gpt-oss-120b",
         messages=[
@@ -75,7 +75,13 @@ def generate_sql(question: str) -> str:
             },
             {
                 "role": "user",
-                "content": question,
+                "content": f"""
+            User question:
+            {question}
+
+            Relevant database schema:
+            {schema_context}
+            """,
             },
         ],
         temperature=0,
