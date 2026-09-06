@@ -1,3 +1,4 @@
+from app.agent.state import QueryState
 from app.llm.sql_generator import generate_sql
 from app.llm.sql_corrector import correct_sql
 from app.rag.schema_context import build_schema_context
@@ -11,30 +12,41 @@ def run_query(question: str):
     if not documents:
         raise ValueError("Question is not related to the database")
 
-    schema_context = build_schema_context(documents)
+    state = QueryState(
+        question=question,
+        schema_context=build_schema_context(documents),
+        tables_used=[document["table"] for document in documents],
+    )
 
-    sql = generate_sql(question, schema_context)
+    state.sql = generate_sql(
+        state.question,
+        state.schema_context,
+    )
 
     max_retries = 1
-    retry_count = 0
 
-    while retry_count <= max_retries:
+    while state.retry_count <= max_retries:
         try:
-            result = execute_safe_query(sql)
+            state.result = execute_safe_query(state.sql)
             break
 
         except ValueError as error:
-            if retry_count == max_retries:
+            if state.retry_count == max_retries:
                 raise
 
-            sql = correct_sql(question, sql, str(error))
-            retry_count += 1
+            state.sql = correct_sql(
+                state.question,
+                state.sql,
+                str(error),
+            )
+
+            state.retry_count += 1
 
     return {
-        "question": question,
-        "sql": sql,
-        "retry_count": retry_count,
-        "tables_used": [document["table"] for document in documents],
-        "row_count": len(result["rows"]),
-        "result": result,
+        "question": state.question,
+        "sql": state.sql,
+        "retry_count": state.retry_count,
+        "tables_used": state.tables_used,
+        "row_count": len(state.result["rows"]),
+        "result": state.result,
     }
