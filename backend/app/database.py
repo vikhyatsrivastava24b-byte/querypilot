@@ -1,12 +1,18 @@
+import os
+
 import psycopg2
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 DATABASE_CONFIG = {
-    "host": "localhost",
-    "port": 5432,
-    "database": "querypilot",
-    "user": "postgres",
-    "password": "Vishwasa@123",
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": int(os.getenv("DB_PORT", "5432")),
+    "database": os.getenv("DB_NAME", "querypilot"),
+    "user": os.getenv("DB_USER", "postgres"),
+    "password": os.getenv("DB_PASSWORD", ""),
 }
 
 
