@@ -10,6 +10,16 @@ export async function queryDatabase(question) {
   return response.data;
 }
 
+export const executeRawSql = async (sql) => {
+  const response = await api.post('/query/execute-sql', { sql });
+  return response.data;
+};
+
+export const getSchema = async () => {
+  const response = await api.get('/schema');
+  return response.data;
+};
+
 export async function getQueryHistory() {
   const response = await api.get('/history');
   return response.data;

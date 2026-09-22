@@ -14,6 +14,7 @@ from app.api.schemas import (
     HistoryResponse,
     HistoryItem,
     ExportRequest,
+    ExecuteSqlRequest,
 )
 from app.llm.nl_answer import generate_nl_answer
 from app.llm.sql_explainer import explain_sql
@@ -38,6 +39,30 @@ def query_database_get(
 def query_database_post(request: QueryRequest):
     """Query the database using a natural language question (POST)."""
     return _process_query(request.question)
+
+
+@router.post("/query/execute-sql", response_model=QueryResponse)
+def execute_raw_sql(request: ExecuteSqlRequest):
+    """Execute manually edited SQL from the IDE."""
+    from app.sql.executor import execute_safe_query
+    
+    try:
+        # We wrap in standard QueryResponse format so frontend uses same logic
+        raw_result = execute_safe_query(request.sql)
+        row_count = len(raw_result["rows"])
+        
+        return QueryResponse(
+            question="[Manual Execution]",
+            sql=request.sql,
+            retry_count=0,
+            tables_used=[], # Might need parsing, but blank is fine for manual execution
+            row_count=row_count,
+            result=raw_result
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(error)}")
 
 
 @router.get("/history", response_model=HistoryResponse)

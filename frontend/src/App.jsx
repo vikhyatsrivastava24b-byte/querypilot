@@ -1,134 +1,98 @@
-import { useState, useRef, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
-import Header from './components/Header';
-import ChatInput from './components/ChatInput';
-import ChatMessage from './components/ChatMessage';
-import Sidebar from './components/Sidebar';
-import WelcomeScreen from './components/WelcomeScreen';
-import { queryDatabase, getSuggestions } from './services/api';
+import SchemaExplorer from './components/SchemaExplorer';
+import IdeWorkspace from './components/IdeWorkspace';
+import AIChatPanel from './components/AIChatPanel';
+import { queryDatabase, executeRawSql } from './services/api';
 
 function AppContent() {
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
-  const chatEndRef = useRef(null);
+  const [activeSql, setActiveSql] = useState('');
+  const [results, setResults] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [isAiThinking, setIsAiThinking] = useState(false);
 
+  // Initial welcome message
   useEffect(() => {
-    loadSuggestions();
+    setChatMessages([
+      { 
+        id: 'welcome', 
+        type: 'ai', 
+        content: 'Hi! I am your AI Data Assistant. Ask me a question about your business, and I will generate the SQL and visualize the data for you.' 
+      }
+    ]);
   }, []);
 
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages]);
-
-  const loadSuggestions = async () => {
-    try {
-      const data = await getSuggestions();
-      setSuggestions(data.suggestions || []);
-    } catch {
-      setSuggestions([
-        "Show me total revenue by product category",
-        "Who are the top 5 customers by order value?",
-        "How many orders were placed each month in 2025?",
-        "What is the average order value by region?",
-      ]);
-    }
-  };
-
-  const handleSendMessage = async (question) => {
-    const userMessage = { id: Date.now(), type: 'user', content: question };
-    const loadingMessage = { id: Date.now() + 1, type: 'loading' };
-
-    setMessages(prev => [...prev, userMessage, loadingMessage]);
-    setIsLoading(true);
+  const handleAiQuestion = async (question) => {
+    // Add user message
+    const userMsg = { id: Date.now().toString(), type: 'user', content: question };
+    setChatMessages(prev => [...prev, userMsg]);
+    setIsAiThinking(true);
 
     try {
-      const result = await queryDatabase(question);
-      setMessages(prev => {
-        const filtered = prev.filter(m => m.type !== 'loading');
-        return [...filtered, {
-          id: Date.now() + 2,
-          type: 'response',
-          data: result,
-        }];
-      });
+      const data = await queryDatabase(question);
+      
+      // Update the IDE
+      setActiveSql(data.sql);
+      setResults(data.result);
+      
+      // Add AI response
+      const aiMsg = { 
+        id: (Date.now() + 1).toString(), 
+        type: 'ai', 
+        content: data.nl_answer || `I have generated the SQL for your question and executed it. Found ${data.row_count} rows.` 
+      };
+      setChatMessages(prev => [...prev, aiMsg]);
     } catch (error) {
       const errorMsg = error.response?.data?.detail || error.message || 'Something went wrong';
-      setMessages(prev => {
-        const filtered = prev.filter(m => m.type !== 'loading');
-        return [...filtered, {
-          id: Date.now() + 2,
-          type: 'error',
-          content: errorMsg,
-        }];
-      });
+      setChatMessages(prev => [...prev, { id: Date.now().toString(), type: 'error', content: errorMsg }]);
     }
+    setIsAiThinking(false);
+  };
 
-    setIsLoading(false);
+  const handleRunSql = async (sql) => {
+    setIsExecuting(true);
+    try {
+      const data = await executeRawSql(sql);
+      setResults(data.result);
+      setActiveSql(sql);
+      
+      // Notify in chat
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `Executed query successfully. Returned ${data.row_count} rows.`
+      }]);
+    } catch (error) {
+      const errorMsg = error.response?.data?.detail || error.message || 'SQL Execution Failed';
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'error',
+        content: `Execution failed: ${errorMsg}`
+      }]);
+    }
+    setIsExecuting(false);
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      background: 'var(--bg-chat)',
-      overflow: 'hidden',
-    }}>
-      <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+    <div className="ide-container">
+      {/* Left Pane: Schema Explorer */}
+      <SchemaExplorer />
 
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-        onSelectQuery={handleSendMessage}
+      {/* Center Pane: IDE Workspace */}
+      <IdeWorkspace 
+        sql={activeSql} 
+        onSqlChange={setActiveSql}
+        onRunSql={handleRunSql}
+        results={results}
+        isExecuting={isExecuting || isAiThinking}
       />
 
-      {/* Main Content Area */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <AnimatePresence mode="wait">
-          {messages.length === 0 ? (
-            <motion.div
-              key="welcome"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              style={{ flex: 1, display: 'flex' }}
-            >
-              <WelcomeScreen
-                suggestions={suggestions}
-                onSuggestionClick={handleSendMessage}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="chat"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              style={{ padding: '20px 0', flex: 1 }}
-            >
-              {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
-              ))}
-              <div ref={chatEndRef} style={{ height: 20 }} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <ChatInput
-        onSend={handleSendMessage}
-        isLoading={isLoading}
-        suggestions={messages.length > 0 ? suggestions : null}
+      {/* Right Pane: AI Chat */}
+      <AIChatPanel 
+        messages={chatMessages}
+        onSendMessage={handleAiQuestion}
+        isThinking={isAiThinking}
       />
     </div>
   );
