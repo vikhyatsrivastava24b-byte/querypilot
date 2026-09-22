@@ -1,8 +1,4 @@
 import { useState, useEffect } from 'react';
-import Editor from 'react-simple-code-editor';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-sql';
-import 'prismjs/themes/prism-tomorrow.css'; // Dark theme for Prism
 import { Play, Code, Loader2 } from 'lucide-react';
 import ResultsTable from './ResultsTable';
 import ChartView from './ChartView';
@@ -60,18 +56,26 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
           </button>
         </div>
         
-        <div className="editor-container" style={{ flex: 1, overflowY: 'auto' }}>
-          <Editor
+        <div className="editor-container" style={{ flex: 1, position: 'relative' }}>
+          <textarea
             value={sql}
-            onValueChange={onSqlChange}
-            highlight={code => Prism.highlight(code, Prism.languages.sql, 'sql')}
-            padding={20}
+            onChange={(e) => onSqlChange(e.target.value)}
+            spellCheck={false}
             style={{
-              minHeight: '100%',
-              fontSize: 14,
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              padding: '20px',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: '14px',
+              color: '#e6edf3',
+              background: 'transparent',
+              border: 'none',
               outline: 'none',
+              resize: 'none',
+              whiteSpace: 'pre',
             }}
-            textareaClassName="focus:outline-none"
           />
         </div>
       </div>
@@ -125,3 +129,4 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
     </div>
   );
 }
+

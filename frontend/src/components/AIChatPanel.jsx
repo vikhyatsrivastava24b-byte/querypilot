@@ -127,3 +127,4 @@ export default function AIChatPanel({ messages, onSendMessage, isThinking }) {
     </div>
   );
 }
+
