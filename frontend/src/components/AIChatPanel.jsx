@@ -66,6 +66,30 @@ export default function AIChatPanel({ messages, onSendMessage, isThinking }) {
                 border: msg.type === 'ai' ? '1px solid var(--border-color)' : 'none',
               }}>
                 {msg.content}
+                
+                {msg.type === 'error' && msg.errorSql && (
+                  <button
+                    onClick={() => onSendMessage(`Fix this SQL error: ${msg.content}\n\nSQL:\n${msg.errorSql}`)}
+                    disabled={isThinking}
+                    style={{
+                      marginTop: '10px',
+                      padding: '6px 12px',
+                      background: 'var(--accent)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: isThinking ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <Sparkles size={12} />
+                    Fix with AI
+                  </button>
+                )}
               </div>
             </motion.div>
           ))}

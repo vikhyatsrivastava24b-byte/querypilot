@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Play, Code, Loader2 } from 'lucide-react';
 import ResultsTable from './ResultsTable';
 import ChartView from './ChartView';
 
-export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isExecuting }) {
+export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isExecuting, onRequestFix }) {
   const [activeTab, setActiveTab] = useState('data');
+  
+  // Resizable Editor State
+  const [editorHeight, setEditorHeight] = useState(300);
+  const workspaceRef = useRef(null);
+  const isDragging = useRef(false);
 
-  // Switch to chart automatically if chart is available and data was just loaded
   useEffect(() => {
     if (results && results.columns?.length >= 2) {
-      // Only switch to chart if there's a numeric column AFTER the first column (label column)
       const hasNumericValue = results.rows?.some(row => row.slice(1).some(cell => typeof cell === 'number'));
       if (hasNumericValue) {
         setActiveTab('chart');
@@ -19,16 +22,43 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
     }
   }, [results]);
 
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (!isDragging.current || !workspaceRef.current) return;
+      const workspaceRect = workspaceRef.current.getBoundingClientRect();
+      const newHeight = Math.max(100, Math.min(e.clientY - workspaceRect.top, workspaceRect.height - 100));
+      setEditorHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = 'default';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   const handleRun = () => {
     if (sql.trim() && !isExecuting) {
       onRunSql(sql);
     }
   };
 
+  const startDrag = (e) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = 'row-resize';
+  };
+
   return (
-    <div className="pane" style={{ background: 'var(--bg-primary)' }}>
+    <div className="pane" ref={workspaceRef} style={{ background: 'var(--bg-primary)', flex: 1 }}>
       {/* Top Half: Editor */}
-      <div style={{ flex: '0 0 50%', display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--border-color)' }}>
+      <div style={{ height: editorHeight, display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div className="pane-header">
           <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Code size={14} style={{ color: 'var(--accent)' }} />
@@ -58,28 +88,39 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
         </div>
         
         <div className="editor-container" style={{ flex: 1, position: 'relative' }}>
-          <textarea
-            value={sql}
-            onChange={(e) => onSqlChange(e.target.value)}
-            spellCheck={false}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              padding: '20px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: '14px',
-              color: '#e6edf3',
-              background: 'transparent',
-              border: 'none',
-              outline: 'none',
-              resize: 'none',
-              whiteSpace: 'pre',
-            }}
-          />
+          {isExecuting ? (
+            <div style={{ padding: '20px', height: '100%' }}>
+              <div className="skeleton" style={{ height: '14px', width: '80%', marginBottom: '12px' }} />
+              <div className="skeleton" style={{ height: '14px', width: '60%', marginBottom: '12px' }} />
+              <div className="skeleton" style={{ height: '14px', width: '90%', marginBottom: '12px' }} />
+              <div className="skeleton" style={{ height: '14px', width: '40%' }} />
+            </div>
+          ) : (
+            <textarea
+              value={sql}
+              onChange={(e) => onSqlChange(e.target.value)}
+              spellCheck={false}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                padding: '20px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '14px',
+                color: '#e6edf3',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                resize: 'none',
+                whiteSpace: 'pre',
+              }}
+            />
+          )}
         </div>
       </div>
+
+      <div className="resizer-h" onMouseDown={startDrag} />
 
       {/* Bottom Half: Results */}
       <div style={{ flex: '1', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -113,8 +154,9 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
         
         <div style={{ flex: 1, overflow: 'auto', padding: '16px' }}>
           {isExecuting ? (
-             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
-                <Loader2 size={24} className="animate-spin" />
+             <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="skeleton" style={{ height: '40px', width: '100%' }} />
+                <div className="skeleton" style={{ height: '100%', width: '100%' }} />
              </div>
           ) : !results ? (
              <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
@@ -130,4 +172,3 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
     </div>
   );
 }
-
