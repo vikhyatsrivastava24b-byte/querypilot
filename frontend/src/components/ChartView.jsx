@@ -21,8 +21,9 @@ function detectChartType(columns, rows) {
   if (!columns || !rows || rows.length === 0) return null;
   if (columns.length < 2) return null;
 
-  const hasNumericSecondCol = rows.some(row => typeof row[1] === 'number');
-  if (!hasNumericSecondCol) return null;
+  // Check if ANY column after the first one is numeric
+  const hasNumeric = rows.some(row => row.slice(1).some(cell => typeof cell === 'number'));
+  if (!hasNumeric) return null;
 
   if (columns.length === 2 && rows.length <= 8 && rows.length >= 2) return 'pie';
 
@@ -50,13 +51,22 @@ export default function ChartView({ columns, rows }) {
   const chartType = useMemo(() => detectChartType(columns, rows), [columns, rows]);
   const chartData = useMemo(() => prepareChartData(columns, rows), [columns, rows]);
 
-  if (!chartType || !chartData.length) return null;
+  const numericColumns = useMemo(() => {
+    if (!columns || !rows) return [];
+    return columns.slice(1).filter((_, index) =>
+      rows.some(row => typeof row[index + 1] === 'number')
+    );
+  }, [columns, rows]);
+
+  if (!chartType || !chartData.length || numericColumns.length === 0) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-tertiary)' }}>
+        This query result cannot be visualized. (Requires at least one numeric column)
+      </div>
+    );
+  }
 
   const labelKey = columns[0];
-  const numericColumns = columns.slice(1).filter((_, index) =>
-    rows.some(row => typeof row[index + 1] === 'number')
-  );
-  if (numericColumns.length === 0) return null;
 
   const commonProps = { margin: { top: 10, right: 30, left: 10, bottom: 10 } };
   const tooltipStyle = {

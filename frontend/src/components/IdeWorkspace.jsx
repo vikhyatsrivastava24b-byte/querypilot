@@ -9,8 +9,9 @@ export default function IdeWorkspace({ sql, onSqlChange, onRunSql, results, isEx
   // Switch to chart automatically if chart is available and data was just loaded
   useEffect(() => {
     if (results && results.columns?.length >= 2) {
-      const hasNumeric = results.rows?.some(row => row.some(cell => typeof cell === 'number'));
-      if (hasNumeric) {
+      // Only switch to chart if there's a numeric column AFTER the first column (label column)
+      const hasNumericValue = results.rows?.some(row => row.slice(1).some(cell => typeof cell === 'number'));
+      if (hasNumericValue) {
         setActiveTab('chart');
       } else {
         setActiveTab('data');
