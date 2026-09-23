@@ -1,15 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, History, Bookmark, Sparkles } from 'lucide-react';
+import { Search, History, Bookmark, Sparkles, Plus } from 'lucide-react';
+import { getProjects, createProject } from '../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [projects, setProjects] = useState([]);
+  
+  useEffect(() => {
+    async function loadProjects() {
+      try {
+        const data = await getProjects();
+        setProjects(data);
+      } catch (err) {
+        console.error("Failed to load projects", err);
+      }
+    }
+    loadProjects();
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (query.trim()) {
       navigate('/research', { state: { initialQuery: query } });
+    }
+  };
+
+  const handleCreateProject = async () => {
+    const title = prompt("Enter project title:");
+    if (title) {
+      const newProj = await createProject(title);
+      setProjects([...projects, newProj]);
     }
   };
 
@@ -58,18 +80,29 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Best laptop for coding under 70k</div>
             <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>React vs Vue for large scale enterprise apps</div>
-            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>How to optimize PostgreSQL queries</div>
           </div>
         </div>
 
         {/* Active Projects */}
         <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <Bookmark size={18} style={{ color: 'var(--success)' }} /> Active Projects
-          </h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Bookmark size={18} style={{ color: 'var(--success)' }} /> Active Projects
+            </h3>
+            <button onClick={handleCreateProject} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <Plus size={16} />
+            </button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>📁 AI in Education Research</div>
-            <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>📁 Tech Stack 2026 Comparison</div>
+            {projects.length === 0 ? (
+               <div style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>No projects yet. Click + to create one.</div>
+            ) : (
+               projects.map(p => (
+                 <div key={p.id} style={{ fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                   📁 {p.title}
+                 </div>
+               ))
+            )}
           </div>
         </div>
 
@@ -85,4 +118,3 @@ export default function Dashboard() {
     </div>
   );
 }
-

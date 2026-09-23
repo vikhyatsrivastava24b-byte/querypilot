@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes_query import router as query_router
-from app.api import routes_query, routes_research, routes_schema
-from app.database import get_connection
+from app.api import routes_query, routes_research, routes_schema, routes_projects
+from app.database import engine
+from app import models
 
+# Create database tables via SQLAlchemy
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="QueryPilot API",
@@ -23,18 +25,12 @@ app.add_middleware(
 app.include_router(routes_schema.router, prefix="/api/schema", tags=["schema"])
 app.include_router(routes_query.router, prefix="/api/query", tags=["query"])
 app.include_router(routes_research.router, prefix="/api/research", tags=["research"])
-
+app.include_router(routes_projects.router, prefix="/api/projects", tags=["projects"])
 
 @app.get("/")
 def root():
     return {"message": "QueryPilot API is running"}
 
-
 @app.get("/health")
 def health_check():
-    try:
-        connection = get_connection()
-        connection.close()
-        return {"status": "healthy", "database": "connected"}
-    except Exception as error:
-        return {"status": "unhealthy", "database": str(error)}
+    return {"status": "healthy"}

@@ -25,6 +25,16 @@ export const executeSearch = async (query, plan_steps = []) => {
   return response.data;
 };
 
+export const getProjects = async () => {
+  const response = await api.get('/projects/');
+  return response.data;
+};
+
+export const createProject = async (title) => {
+  const response = await api.post('/projects/', { title });
+  return response.data;
+};
+
 export const getSchema = async () => {
   const response = await api.get('/schema');
   return response.data;
