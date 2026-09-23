@@ -15,6 +15,16 @@ export const executeRawSql = async (sql) => {
   return response.data;
 };
 
+export const analyzeResearch = async (query) => {
+  const response = await api.post('/research/analyze', { query });
+  return response.data;
+};
+
+export const executeSearch = async (query, plan_steps = []) => {
+  const response = await api.post('/research/execute', { query, plan_steps });
+  return response.data;
+};
+
 export const getSchema = async () => {
   const response = await api.get('/schema');
   return response.data;

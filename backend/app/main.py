@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes_query import router as query_router
-from app.api.routes_schema import router as schema_router
+from app.api import routes_query, routes_research, routes_schema
 from app.database import get_connection
 
 
@@ -20,8 +20,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(query_router)
-app.include_router(schema_router)
+app.include_router(routes_schema.router, prefix="/api/schema", tags=["schema"])
+app.include_router(routes_query.router, prefix="/api/query", tags=["query"])
+app.include_router(routes_research.router, prefix="/api/research", tags=["research"])
 
 
 @app.get("/")
