@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from ..llm.query_analyzer import analyze_query, synthesize_research
+from ..llm.query_analyzer import analyze_query
 from ..search.engine import execute_web_search
-from .schemas import ResearchAnalyzeRequest, QueryAnalysisResponse, ExecuteSearchRequest, ExecuteSearchResponse, SynthesizeRequest, SynthesizeResponse
+from .schemas import ResearchAnalyzeRequest, QueryAnalysisResponse, ExecuteSearchRequest, ExecuteSearchResponse
 
 router = APIRouter()
 
@@ -31,16 +31,4 @@ async def execute_research(request: ExecuteSearchRequest):
         return ExecuteSearchResponse(sources=sources)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to execute search: {str(e)}")
-
-@router.post("/synthesize", response_model=SynthesizeResponse)
-async def synthesize_brief(request: SynthesizeRequest):
-    try:
-        md = await synthesize_research(
-            query=request.query,
-            plan_steps=request.plan_steps,
-            sources=[s.dict() for s in request.sources]
-        )
-        return SynthesizeResponse(brief_markdown=md)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to synthesize: {str(e)}")
 

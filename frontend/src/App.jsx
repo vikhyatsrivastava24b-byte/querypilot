@@ -9,6 +9,10 @@ import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import ResearchWorkspace from './pages/ResearchWorkspace';
 
+import Explore from './pages/Explore';
+import Projects from './pages/Projects';
+import History from './pages/History';
+
 export default function App() {
   return (
     <ThemeProvider>
@@ -21,12 +25,11 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/research" element={<ResearchWorkspace />} />
-            {/* Stubs for future phases */}
-            <Route path="/explore" element={<div style={{padding: 40}}>Explore coming soon...</div>} />
-            <Route path="/projects" element={<div style={{padding: 40}}>Projects coming soon...</div>} />
-            <Route path="/saved" element={<div style={{padding: 40}}>Saved queries coming soon...</div>} />
-            <Route path="/history" element={<div style={{padding: 40}}>History coming soon...</div>} />
-            <Route path="/insights" element={<div style={{padding: 40}}>Insights coming soon...</div>} />
+            <Route path="/explore" element={<Explore />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/saved" element={<Projects />} /> {/* Alias to projects for now */}
+            <Route path="/history" element={<History />} />
+            <Route path="/insights" element={<Explore />} />
             <Route path="/settings" element={<div style={{padding: 40}}>Settings coming soon...</div>} />
           </Route>
         </Routes>
