@@ -47,8 +47,13 @@ class SourceCard(BaseModel):
 class ExecuteSearchResponse(BaseModel):
     sources: List[SourceCard]
 
+class SynthesizeRequest(BaseModel):
+    query: str
+    plan_steps: List[str]
+    sources: List[SourceCard]
 
-class ResultData(BaseModel):
+class SynthesizeResponse(BaseModel):
+    brief_markdown: str
     columns: list[str]
     rows: list[list]
 

@@ -25,6 +25,11 @@ export const executeSearch = async (query, plan_steps = []) => {
   return response.data;
 };
 
+export const synthesizeResearch = async (query, plan_steps, sources) => {
+  const response = await api.post('/research/synthesize', { query, plan_steps, sources });
+  return response.data;
+};
+
 export const getProjects = async () => {
   const response = await api.get('/projects/');
   return response.data;

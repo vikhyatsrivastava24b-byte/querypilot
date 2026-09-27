@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Search, Brain, Loader2, Target, HelpCircle, Globe, Play } from 'lucide-react';
-import { analyzeResearch, executeSearch } from '../services/api';
+import { Search, Brain, Loader2, Target, HelpCircle, Globe, Play, FileText, Share2, Download } from 'lucide-react';
+import { analyzeResearch, executeSearch, synthesizeResearch } from '../services/api';
 
 export default function ResearchWorkspace() {
   const location = useLocation();
@@ -15,6 +15,11 @@ export default function ResearchWorkspace() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [sources, setSources] = useState([]);
   const [searchError, setSearchError] = useState(null);
+
+  // Synthesis State
+  const [activeTab, setActiveTab] = useState('plan'); // 'plan' or 'brief'
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [brief, setBrief] = useState(null);
 
   useEffect(() => {
     async function fetchAnalysis() {
@@ -48,6 +53,21 @@ export default function ResearchWorkspace() {
       setSearchError("Failed to fetch live sources.");
     } finally {
       setIsExecuting(false);
+    }
+  };
+
+  const handleSynthesize = async () => {
+    if (!analysisData || sources.length === 0) return;
+    setIsSynthesizing(true);
+    setActiveTab('brief');
+    try {
+      const data = await synthesizeResearch(analysisData.improved_query, analysisData.research_plan, sources);
+      setBrief(data.brief_markdown);
+    } catch (err) {
+      console.error("Synthesis failed", err);
+      setBrief("## Error\nFailed to synthesize research.");
+    } finally {
+      setIsSynthesizing(false);
     }
   };
 
@@ -103,18 +123,6 @@ export default function ResearchWorkspace() {
                 </div>
               </div>
 
-              {/* Missing Info */}
-              <div style={{ border: '1px solid var(--warning-light)', background: 'var(--bg-primary)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--warning)', marginBottom: '12px' }}>
-                  <HelpCircle size={16} /> <span style={{ fontWeight: 600, fontSize: '14px' }}>Missing Context</span>
-                </div>
-                <ul style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0, paddingLeft: '16px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {analysisData.missing_information.map((info, idx) => (
-                    <li key={idx}>{info}</li>
-                  ))}
-                </ul>
-              </div>
-
               {/* Improved Query */}
               <div style={{ border: '1px solid var(--accent)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)', marginBottom: '12px' }}>
@@ -132,6 +140,19 @@ export default function ResearchWorkspace() {
                   {isExecuting ? "Searching Web..." : "Execute Plan"}
                 </button>
               </div>
+
+              {sources.length > 0 && (
+                <div style={{ border: '1px solid var(--success)', padding: '16px', borderRadius: 'var(--radius-md)' }}>
+                  <button 
+                    onClick={handleSynthesize}
+                    disabled={isSynthesizing}
+                    style={{ width: '100%', background: 'var(--success)', color: 'white', border: 'none', padding: '8px', borderRadius: 'var(--radius-sm)', fontWeight: 600, cursor: isSynthesizing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    {isSynthesizing ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />} 
+                    Synthesize Final Brief
+                  </button>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -145,32 +166,65 @@ export default function ResearchWorkspace() {
         overflowY: 'auto'
       }}>
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border-light)', display: 'flex', gap: '24px' }}>
-          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent)', borderBottom: '2px solid var(--accent)', paddingBottom: '16px', marginBottom: '-17px' }}>Research Plan</span>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-tertiary)', cursor: 'not-allowed' }}>Evidence Comparison</span>
-          <span style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-tertiary)', cursor: 'not-allowed' }}>Final Brief</span>
+          <button onClick={() => setActiveTab('plan')} style={{ background: 'none', border: 'none', fontSize: '14px', fontWeight: 600, color: activeTab === 'plan' ? 'var(--accent)' : 'var(--text-tertiary)', borderBottom: activeTab === 'plan' ? '2px solid var(--accent)' : '2px solid transparent', paddingBottom: '16px', marginBottom: '-17px', cursor: 'pointer' }}>Research Plan</button>
+          <button onClick={() => setActiveTab('brief')} style={{ background: 'none', border: 'none', fontSize: '14px', fontWeight: 600, color: activeTab === 'brief' ? 'var(--accent)' : 'var(--text-tertiary)', borderBottom: activeTab === 'brief' ? '2px solid var(--accent)' : '2px solid transparent', paddingBottom: '16px', marginBottom: '-17px', cursor: 'pointer' }}>Final Brief (Stage 7)</button>
         </div>
         
         <div style={{ padding: '32px 48px', maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-          {analyzing ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--text-tertiary)' }}>
-              Generating custom research plan...
-            </div>
-          ) : analysisData && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Research Plan</h1>
-              <p style={{ color: 'var(--text-secondary)' }}>Based on the improved query, here is the structured plan to gather evidence.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {analysisData.research_plan.map((step, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
-                      {i + 1}
-                    </div>
-                    <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.5 }}>{step}</div>
-                  </div>
-                ))}
+          {activeTab === 'plan' ? (
+            analyzing ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--text-tertiary)' }}>
+                Generating custom research plan...
               </div>
-            </div>
+            ) : analysisData && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Research Plan</h1>
+                <p style={{ color: 'var(--text-secondary)' }}>Based on the improved query, here is the structured plan to gather evidence.</p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {analysisData.research_plan.map((step, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', background: 'var(--bg-secondary)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <div style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>
+                        {i + 1}
+                      </div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.5 }}>{step}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          ) : (
+            isSynthesizing ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', color: 'var(--text-tertiary)', gap: '16px' }}>
+                <Loader2 size={32} className="animate-spin" />
+                <span>Reading sources, generating insights, building graph...</span>
+              </div>
+            ) : brief ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h1 style={{ fontSize: '24px', fontWeight: 800 }}>Research Brief</h1>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}><Share2 size={14} /> Share</button>
+                    <button style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}><Download size={14} /> PDF</button>
+                  </div>
+                </div>
+                <div style={{ 
+                  background: 'var(--bg-secondary)', 
+                  padding: '32px', 
+                  borderRadius: 'var(--radius-lg)', 
+                  border: '1px solid var(--border-color)',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.6,
+                  color: 'var(--text-primary)'
+                }}>
+                  {brief}
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: 'var(--text-tertiary)' }}>
+                Click "Synthesize Final Brief" after gathering sources to generate the report and Insight Graph.
+              </div>
+            )
           )}
         </div>
       </div>
